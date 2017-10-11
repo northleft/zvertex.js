@@ -8,7 +8,7 @@
     var settings = {};
 		that.children = [];
 		
-		if (typeof width == 'object'){
+		if (typeof width === 'object'){
 			settings = width;
 			width = false;
 		}
@@ -38,13 +38,19 @@
 	};
 	ZV.World.prototype.constructor = ZV.World;
 	
+  var zfid = -1;
+  function ZFID(){
+    zfid++;
+    return zfid;
+  }
+  
 	ZV.Point = function(x, y, z){
 		var that = this;
 		
 		that.ZV = true;
 		that.parent = false;
 		that.world = false;
-    that.id = Date.now();
+    that.id = 'ZF_' + ZFID();
 		that.children = [];
 		that._hasChildren = false;
 		that.transforms = [];
@@ -54,7 +60,7 @@
 		var position = that.position;
 		that._matrix = false;
 		that._childMatrix = false;
-    that.renderable = true;
+    that.visible = true;
     that.computeChildren = true;
 		
 		position.x = x || 0;
@@ -80,7 +86,9 @@
       
       var i = that.transforms.length;
 			while(i--){
-        if (!that.transforms[i].applyToChildren || !that.transforms[i].applyToSelf) that._matrixMix = true;
+        if (!that.transforms[i].applyToChildren || !that.transforms[i].applyToSelf){
+          that._matrixMix = true;
+        }
 			}
 		};
     
@@ -101,7 +109,7 @@
       
       */
       
-      if (that.renderable){
+      if (that.visible){
         var parent = that.parent;
         var world = that.world;
         
@@ -115,8 +123,12 @@
           var t = that.transforms[transL - i];
           var m = t.compute();
           
-          if (t.applyToSelf) matrix = matrixMultiply(matrix, m);
-          if (t.applyToChildren) childMatrix = matrixMultiply(childMatrix, m);
+          if (t.applyToSelf){
+            matrix = matrixMultiply(matrix, m);
+          }
+          if (t.applyToChildren){
+            childMatrix = matrixMultiply(childMatrix, m);
+          }
         }
         
         that._matrix = matrix;
@@ -167,18 +179,30 @@
 		that.x = x || 1;
 		that.y = y || 1;
 		that.z = z || 1;
-		
-		that.compute = function(){
-			var m = [
-				[that.x, 0, 0, 0],
-				[0, that.y, 0, 0],
-				[0, 0, that.z, 0],
-				[0, 0, 0, 1]
-			];
+    
+    that.compute = function(){
+      
+      if (!that.matrix){
+        that.matrix = [
+          [that.x, 0, 0, 0],
+          [0, that.y, 0, 0],
+          [0, 0, that.z, 0],
+          [0, 0, 0, 1]
+        ];
+      }
 			
-			that.matrix = m;
-			return m;
+			return that.matrix;
 		};
+    
+    that.val = function(x, y, z){
+      that.x = x || that.x;
+      that.y = y || that.y;
+      that.z = z || that.z;
+      
+      that.matrix = false;
+    };
+    
+    that.compute();
 	};
 	transform.ScaleXYZ.prototype.constructor = transform.ScaleXYZ;
 	
@@ -319,6 +343,9 @@
 			that.matrix = m;
 			return m;
 		};
+    
+    that.val = function(){
+    };
 	};
 	transform.Skew.prototype.constructor = transform.Skew;
 	
@@ -394,14 +421,15 @@
 	function defaultTransformProperties(that){
     that.applyToChildren = true;
     that.applyToSelf = true;
+    that.valueChanged = false;
 	}
   
   
   // Converts Degrees to Radians
   // ZV Only uses radians (for efficiency)
-	var rad = Math.PI/180;
+	var radiansPerDegree = Math.PI/180;
 	function toRad(deg){
-		return parseFloat(deg) * rad;
+		return parseFloat(deg) * radiansPerDegree;
 	}
   ZV.toRad = toRad;
   
