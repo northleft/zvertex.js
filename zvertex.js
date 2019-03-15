@@ -2,10 +2,158 @@
 (function(){
 	window.ZV = {};
 	var ZV = window.ZV;
+
+  class space{
+    constructor(x, y, z){
+      this._ZID = ZFID();
+      this.children = [];
+      this.hasChildren = false;
+      this.x = x || 0;
+      this.y = y || 0;
+      this.z = z || 0;
+
+      this.computed = {
+        x: this.x,
+        y: this.y,
+        z: this.z
+      }
+    }
+    
+    addChild(obj){
+      if (obj._ZID){
+        obj.parent = this;
+        obj.world = this.world;
+        this.children.push(obj);
+        this.hasChildren = true;
+      }
+    }
+    
+    computeChildren(){
+      let children = this.children;
+      let i = children.length;
+      while (i--){
+        children[i].compute();
+      }
+    };
+  }
+
+  class World extends space{
+    constructor(width, height, x, y, z, focal){
+      super(x, y, z);
+      this.width = width;
+      this.height = height;
+      this.focal = focal || 1000;
+      this.compute = this.computeChildren;
+    }
+  }
+
+  class Point extends span{
+    constructor(x, y, z){
+      super(x, y, z);
+
+      this.transforms = [];
+      this.hasTransforms = false;
+      this.matrix = false;
+      this.childMatrix = false;
+      this.visible = true;
+      this.computeChildren = true;
+      this.world = false;
+      this.compute = this.computeChildren;
+    }
+
+		addTransform(obj){
+      if (obj._ZID){
+			  this.transforms.push(obj);
+        this.hasTransforms = true;
+      }
+		};
+    
+		that.compute = function(){
+      let
+        parent = that.parent,
+        world = that.world,
+        transforms = that.transforms,
+        
+        matrix = parent ? matrixDuplicate(parent._childMatrix) : [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+        childMatrix = matrixDuplicate(matrix),
+        renderSeparateMatrices = false,
+          
+        transL = that.transforms.length,
+        i = transL,
+        t
+      ;
+      
+      while(i--){
+        t = transforms[i];
+        if (!t.applyToSelf || t.applyToChildren){
+          renderSeparateMatrices = true;
+        }
+      }
+      
+      
+      i = transL;
+      transL--;
+      
+      if (!renderSeparateMatrices){
+        while(i--){
+          matrix = matrixMultiply(matrix, transforms[transL - i].compute());
+        }
+        
+        that._matrix = matrix;
+        that._childMatrix = matrixDuplicate(matrix);
+      } else {
+        while(i--){
+          t = transforms[transL - i];
+          var m = t.compute();
+
+          if (t.applyToSelf){
+            matrix = matrixMultiply(matrix, m);
+          }
+          if (t.applyToChildren){
+            childMatrix = matrixMultiply(childMatrix, m);
+          }
+        }
+        
+        that._matrix = matrix;
+        that._childMatrix = childMatrix;
+      }
+
+
+      var lx = position.x;
+      var ly = position.y;
+      var lz = position.z;
+
+      var x = matrix[0][0] * lx + matrix[0][1] * ly + matrix[0][2] * lz + matrix[0][3];
+      var	y = matrix[1][0] * lx + matrix[1][1] * ly + matrix[1][2] * lz + matrix[1][3];
+      var z = matrix[2][0] * lx + matrix[2][1] * ly + matrix[2][2] * lz + matrix[2][3];
+
+      if (parent){
+        x += parent._x;
+        y += parent._y;
+        z += parent._z;
+      }
+
+      that._x = x;
+      that._y = y;
+      that._z = z;
+
+      var scale = world.focal ? world.focal / (world.focal + world.z + z) : 1;
+
+      computed.x = x * scale;
+      computed.y = y * scale;
+      computed.z = z;
+
+      if (that.computeChildren){
+        i = that.children.length;
+        while (i--){
+          that.children[i].compute();
+        }
+      }
+  }
   
 	ZV.World = function(width, height, x, y, z, focal){
-		var that = this;
-    var settings = {};
+		let that = this;
+    let settings = {};
 		that.children = [];
 		
 		if (typeof width === 'object'){
@@ -29,23 +177,21 @@
 		};
 		
 		that.compute = function(){
-			var children = that.children;
-			var i = children.length;
+			let children = that.children;
+			let i = children.length;
 			while (i--){
 				children[i].compute();
 			}
 		};
 	};
 	ZV.World.prototype.constructor = ZV.World;
-	
-  var zfid = -1;
-  function ZFID(){
-    zfid++;
-    return zfid;
-  }
   
 	ZV.Point = function(x, y, z){
-		var that = this;
+		let
+      that = this,
+      computed = {},
+      position = {},
+    ;
 		
 		that.ZV = true;
 		that.parent = false;
@@ -54,10 +200,8 @@
 		that.children = [];
 		that._hasChildren = false;
 		that.transforms = [];
-		that.computed = {};
-		var computed = that.computed;
-		that.position = {};
-		var position = that.position;
+		that.computed = computed;
+		that.position = position;
 		that._matrix = false;
 		that._childMatrix = false;
     that.visible = true;
@@ -82,17 +226,93 @@
 		
 		that.addTransform = function(obj){
 			that.transforms.push(obj);
-      that._matrixMix = false;
-      
-      var i = that.transforms.length;
-			while(i--){
-        if (!that.transforms[i].applyToChildren || !that.transforms[i].applyToSelf){
-          that._matrixMix = true;
-        }
-			}
 		};
     
 		that.compute = function(){
+      let
+        parent = that.parent,
+        world = that.world,
+        transforms = that.transforms,
+        
+        matrix = parent ? matrixDuplicate(parent._childMatrix) : [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+        childMatrix = matrixDuplicate(matrix),
+        renderSeparateMatrices = false,
+          
+        transL = that.transforms.length,
+        i = transL,
+        t
+      ;
+      
+      while(i--){
+        t = transforms[i];
+        if (!t.applyToSelf || t.applyToChildren){
+          renderSeparateMatrices = true;
+        }
+      }
+      
+      
+      i = transL;
+      transL--;
+      
+      if (!renderSeparateMatrices){
+        while(i--){
+          matrix = matrixMultiply(matrix, transforms[transL - i].compute());
+        }
+        
+        that._matrix = matrix;
+        that._childMatrix = matrixDuplicate(matrix);
+      } else {
+        while(i--){
+          t = transforms[transL - i];
+          var m = t.compute();
+
+          if (t.applyToSelf){
+            matrix = matrixMultiply(matrix, m);
+          }
+          if (t.applyToChildren){
+            childMatrix = matrixMultiply(childMatrix, m);
+          }
+        }
+        
+        that._matrix = matrix;
+        that._childMatrix = childMatrix;
+      }
+
+
+      var lx = position.x;
+      var ly = position.y;
+      var lz = position.z;
+
+      var x = matrix[0][0] * lx + matrix[0][1] * ly + matrix[0][2] * lz + matrix[0][3];
+      var	y = matrix[1][0] * lx + matrix[1][1] * ly + matrix[1][2] * lz + matrix[1][3];
+      var z = matrix[2][0] * lx + matrix[2][1] * ly + matrix[2][2] * lz + matrix[2][3];
+
+      if (parent){
+        x += parent._x;
+        y += parent._y;
+        z += parent._z;
+      }
+
+      that._x = x;
+      that._y = y;
+      that._z = z;
+
+      var scale = world.focal ? world.focal / (world.focal + world.z + z) : 1;
+
+      computed.x = x * scale;
+      computed.y = y * scale;
+      computed.z = z;
+
+      if (that.computeChildren){
+        i = that.children.length;
+        while (i--){
+          that.children[i].compute();
+        }
+      }
+      
+      
+      
+      
       /*
       Gotta think about how
       Transforms are inherited
@@ -106,8 +326,6 @@
       
       a: apply if transform.applyToSelf;
       b: apply if transform.applyToChildren;
-      
-      */
       
       if (that.visible){
         var parent = that.parent;
@@ -165,6 +383,8 @@
           }
         }
       }
+      
+      */
 		};
 	};
 	ZV.Point.prototype.constructor = ZV.Point;
@@ -173,7 +393,7 @@
 	var transform = ZV.Transform;
 	
 	transform.ScaleXYZ = function(x,y,z){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
     
 		that.x = x || 1;
@@ -207,13 +427,17 @@
 	transform.ScaleXYZ.prototype.constructor = transform.ScaleXYZ;
 	
 	transform.Scale = function(v){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
     
 		that.val = v || 1;
+
+    that.scale = function(v){
+      that.val = v;
+    }
 		
 		that.compute = function(){
-			var m = [
+			let m = [
 				[that.val, 0, 0, 0],
 				[0, that.val, 0, 0],
 				[0, 0, that.val, 0],
@@ -227,16 +451,17 @@
 	transform.Scale.prototype.constructor = transform.Scale;
 	
 	transform.RotateX = function(val){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
+		defaultTransformPropertiesRotate(that);
 		that.val = val || 0;
     
 		that.compute = function(){
-      var rad = that.val;
-			var c = Math.cos(rad);
-			var s = Math.sin(rad);
+      let rad = that.val;
+			let c = Math.cos(rad);
+			let s = Math.sin(rad);
 			
-			var m = [
+			let m = [
 				[1, 0, 0, 0],
 				[0, c, -s, 0],
 				[0, s, c, 0],
@@ -250,16 +475,17 @@
 	transform.RotateX.prototype.constructor = transform.RotateX;
 	
 	transform.RotateY = function(val){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
+		defaultTransformPropertiesRotate(that);
 		that.val = val || 0;
 		
 		that.compute = function(){
-      var rad = that.val;
-			var c = Math.cos(rad);
-			var s = Math.sin(rad);
+      let rad = that.val;
+			let c = Math.cos(rad);
+			let s = Math.sin(rad);
 			
-			var m = [
+			let m = [
 				[c, 0, s, 0],
 				[0, 1, 0, 0],
 				[-s, 0, c, 0],
@@ -275,14 +501,15 @@
 	transform.RotateZ = function(val){
 		var that = this;
 		defaultTransformProperties(that);
+		defaultTransformPropertiesRotate(that);
 		that.val = val || 0;
 		
 		that.compute = function(){
-      var rad = that.val;
-			var c = Math.cos(rad);
-			var s = Math.sin(rad);
+      let rad = that.val;
+			let c = Math.cos(rad);
+			let s = Math.sin(rad);
 			
-			var m = [
+			let m = [
 				[c, -s, 0, 0],
 				[s, c, 0, 0],
 				[0, 0, 1, 0],
@@ -296,7 +523,7 @@
 	transform.RotateZ.prototype.constructor = transform.RotateZ;
 	
 	transform.Translate = function(x,y,z){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
 		that.x = x || 0;
 		that.y = y || 0;
@@ -316,7 +543,7 @@
 	transform.Translate.prototype.constructor = transform.Translate;
 	
 	transform.Skew = function(xy, xz, yx, yz, zx, zy){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
 		that.xy = xy || 0;
 		that.xz = xz || 0;
@@ -326,14 +553,14 @@
 		that.zy = zy || 0;
 		
 		that.compute = function(){
-			var xy = Math.tan(that.xy);
-			var xz = Math.tan(that.xz);
-			var yx = Math.tan(that.yx);
-			var yz = Math.tan(that.yz);
-			var zx = Math.tan(that.zx);
-			var zy = Math.tan(that.zy);
+			let xy = Math.tan(that.xy);
+			let xz = Math.tan(that.xz);
+			let yx = Math.tan(that.yx);
+			let yz = Math.tan(that.yz);
+			let zx = Math.tan(that.zx);
+			let zy = Math.tan(that.zy);
 			
-			var m = [
+			let m = [
 				[1, xy, xz, 0],
 				[yx, 1, yz, 0],
 				[zx, zy, 1, 0],
@@ -350,16 +577,16 @@
 	transform.Skew.prototype.constructor = transform.Skew;
 	
 	transform.SkewX = function(y, z){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
 		that.y = y || 0;
 		that.z = z || 0;
 		
 		that.compute = function(){
-			var y = Math.tan(that.y);
-			var z = Math.tan(that.z);
+			let y = Math.tan(that.y);
+			let z = Math.tan(that.z);
 			
-			var m = [
+			let m = [
 				[1, y, z, 0],
 				[0, 1, 0, 0],
 				[0, 0, 1, 0],
@@ -373,16 +600,16 @@
 	transform.SkewX.prototype.constructor = transform.SkewX;
 	
 	transform.SkewY = function(x, z){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
 		that.x = x || 0;
 		that.z = z || 0;
 		
 		that.compute = function(){
-			var x = Math.tan(that.x);
-			var z = Math.tan(that.z);
+			let x = Math.tan(that.x);
+			let z = Math.tan(that.z);
 			
-			var m = [
+			let m = [
 				[1, 0, 0, 0],
 				[x, 1, z, 0],
 				[0, 0, 1, 0],
@@ -396,16 +623,16 @@
 	transform.SkewY.prototype.constructor = transform.SkewY;
 	
 	transform.SkewZ = function(x, y){
-		var that = this;
+		let that = this;
 		defaultTransformProperties(that);
 		that.x = x || 0;
 		that.y = y || 0;
 		
 		that.compute = function(){
-			var x = Math.tan(toRad(that.x));
-			var y = Math.tan(toRad(that.y));
-			
-			var m = [
+			let x = Math.tan(toRad(that.x));
+			let y = Math.tan(toRad(that.y));
+      
+			let m = [
 				[1, 0, 0, 0],
 				[0, 1, 0, 0],
 				[x, y, 1, 0],
@@ -418,10 +645,26 @@
 	};
 	transform.SkewZ.prototype.constructor = transform.SkewZ;
 	
+  var zfid = -1;
+  function ZFID(){
+    zfid++;
+    return 'ZF_' + zfid;
+  }
+	
 	function defaultTransformProperties(that){
     that.applyToChildren = true;
     that.applyToSelf = true;
     that.valueChanged = false;
+    that.id = 'ZF_' + ZFID();
+	}
+	
+	function defaultTransformPropertiesRotate(that){
+    that.radian = function(v){
+      that.val = v;
+    }
+    that.degree = function(v){
+      that.val = v * radiansPerDegree;
+    }
 	}
   
   
@@ -434,13 +677,13 @@
   ZV.toRad = toRad;
   
   function matrixMultiply(mat0, mat1){
-    var mat2 = [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]];
+    let mat2 = [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]];
     
-    var i = 4;
+    let i = 4;
     while(i--){
-      var j = 4;
+      let j = 4;
       while (j--){
-        var k = 4;
+        let k = 4;
         while(k--){
           mat2[i][j] += mat0[i][k] * mat1[k][j];
         }
@@ -451,11 +694,11 @@
   }
   
   function matrixDuplicate(mat0){
-    var mat1 = [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]];
+    let mat1 = [[0,0,0,0], [0,0,0,0], [0,0,0,0], [0,0,0,0]];
     
-    var i = 4;
+    let i = 4;
     while(i--){
-      var j = 4;
+      let j = 4;
       while (j--){
         mat1[i][j] = mat0[i][j];
       }

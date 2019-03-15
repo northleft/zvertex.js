@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no">
+    
+    <script type="text/javascript" src="FTrig.js"></script>
+    <script type="text/javascript" src="zvertex-es6.js"></script>
+    <script>
+      var width = 1000;
+      var height = 500;
+      var wx = width / 2;
+      var wy = height / 2;
+      var world = new ZV.World(width, height);
+      world.focal = 800;
+      var points = world.children;
+      var els;
+      var body;
+
+      var rotate0 = new ZV.Transform.RotateY();
+      var rotate1 = new ZV.Transform.RotateZ();
+      var skew = new ZV.Transform.Skew();
+      //skew.val(Math.random() - Math.random(), Math.random() - Math.random(), Math.random() - Math.random(), Math.random() - Math.random(), Math.random() - Math.random(), Math.random() - Math.random())
+      world.addTransform(rotate0);
+      world.addTransform(rotate1);
+      world.addTransform(skew);
+
+      document.addEventListener('DOMContentLoaded',function(){
+        let num = 7;
+
+        let spread = 45;
+        let x = num * spread / 2;
+        let y = x;
+        let z = x;
+
+        body = document.getElementsByTagName('body')[0];
+
+        let i = num;
+        while(i--){
+          let tx = x - i * spread;
+
+          let j = num;
+          while(j--){
+            let ty = y - j * spread;
+
+            let k = num;
+            while (k--){
+              let tz = z - k * spread;
+              let p = new ZV.Point(tx, ty, tz);
+              p.el = document.createElement('div');
+              body.appendChild(p.el);
+              world.addChild(p);
+            }
+          }
+        }
+
+        els = document.getElementsByTagName('div');
+        animate();
+      });
+
+      var t = Date.now();
+      var h = document.getElementsByTagName('h1')[0];
+
+      function draw(){
+        world.render();
+        points.sort(function(a, b){
+          var x = a.cameraDistance; var y = b.cameraDistance;
+          return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+        }).reverse();
+        let i = points.length;
+        while (i--){
+          let p = points[i];
+          let el = els[i];
+          let css = {};
+          css.transform = 'translate(' + p.rendered.x + 'px,' + p.rendered.y + 'px) scale(' + p.rendered.scale + ')';
+          css.filter = 'blur(' + p.rendered.scale * .5 + 'px)';
+          //el.setAttribute('style', 'transform: translate(' + p.rendered.x + 'px,' + p.rendered.y + 'px) scale(' + p.rendered.scale + ');filter: blur(' + p.rendered.scale * 1 + 'px);');
+          css = JSON.stringify(css).replace(/",/g, '";').replace(/{|}|"/g, '');
+          el.setAttribute('style', css);
+        }
+
+        document.getElementsByTagName('h1')[0].innerHTML = Date.now() - t;
+        t = Date.now();
+      }
+
+      var d0 = ZV.d2r(.1);
+      var d1 = ZV.d2r(.1);
+
+      var t = 0;
+      function animate(){
+        t++
+        rotate0.y += d0;
+        rotate1.z += d1;
+        skew.val(d0 * t, 0, 0, d0 * t, 0, 0);
+        draw();
+        //setTimeout(animate, 50);
+        requestAnimationFrame(animate);
+      }
+    </script>
+    <style>
+      div,body{
+        padding: 0px;
+        margin: 0px;
+      }
+      body{
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      div{
+        /*background: linear-gradient(45deg, rgb(80, 80, 80) 0%, rgb(170,170,170) 50%, rgb(120, 120, 120) 100%);*/
+        background: rgb(100,100,100);
+        display: block;
+        position: absolute;
+        float: none;
+        top: 50%;
+        left: 50%;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: rgb(250, 250, 250) 1px solid;
+        /*border: rgba(255, 255, 255, .4) 1px solid;*/
+      }
+    </style>
+  </head>
+	<body>
+    <h1></h1>
+  </body>
+</html>
