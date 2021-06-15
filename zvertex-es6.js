@@ -1,18 +1,18 @@
 
 (function(){
-  var ZV = {all: {}};
-	window.ZV = ZV;
-	
-  var zvid = -1;
+  let ZV = {all: {}};
+  window.ZV = ZV;
+
+  let zvid = -1;
   function ZVID(){
     zvid++;
     return 'ZF_' + zvid;
   }
   
-  var ZVMath = Math;
-  var ZVsin = ZVMath.sin;
-  var ZVcos = ZVMath.cos;
-  var ZVtan = ZVMath.tan;
+  let ZVMath = Math;
+  let ZVsin = ZVMath.sin;
+  let ZVcos = ZVMath.cos;
+  let ZVtan = ZVMath.tan;
 
   
   if (window.FTrig){
@@ -72,12 +72,12 @@
       }
     }
 
-		addTransform(obj){
+    addTransform(obj){
       if (obj.ZVID){
-			  this.transforms.push(obj);
+        this.transforms.push(obj);
         this.hasTransforms = true;
       }
-		}
+    }
     
     renderChildren(){
       let children = this.children;
